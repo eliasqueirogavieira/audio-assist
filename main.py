@@ -1,5 +1,6 @@
 import asyncio
 import json
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -13,41 +14,55 @@ from audio_handler import AudioHandler
 from websocket_manager import manager
 from web_ui import get_html_content
 
-# Initialize FastAPI app
-app = FastAPI(title=Config.UI_TITLE)
-
 # Global audio handler
 audio_handler = None
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize audio handler on startup"""
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifecycle"""
     global audio_handler
+
+    # Startup
     print("Starting Real-Time AI Audio Assistant...")
     print(f"Using LLM Provider: {Config.LLM_PROVIDER}")
 
     # Initialize audio handler with callback
-    def on_transcription(text: str):
+    async def on_transcription(text: str):
         """Callback for when audio is transcribed"""
         # Send transcription to all connected clients
-        asyncio.create_task(broadcast_transcription(text))
+        await broadcast_transcription(text)
+
+    def sync_on_transcription(text: str):
+        """Synchronous wrapper for the transcription callback"""
+        # Get the current event loop or create a new one
+        try:
+            loop = asyncio.get_running_loop()
+            asyncio.run_coroutine_threadsafe(on_transcription(text), loop)
+        except RuntimeError:
+            # No running loop, create a new one
+            try:
+                asyncio.run(on_transcription(text))
+            except Exception as e:
+                print(f"Error in transcription callback: {e}")
 
     try:
-        audio_handler = AudioHandler(on_transcription)
+        audio_handler = AudioHandler(sync_on_transcription)
         print("Audio handler initialized successfully")
     except Exception as e:
         print(f"Failed to initialize audio handler: {e}")
         print("Audio features will be disabled")
 
+    yield
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup on shutdown"""
-    global audio_handler
+    # Shutdown
     if audio_handler:
         audio_handler.stop_listening()
     print("Application shutdown complete")
+
+
+# Initialize FastAPI app with lifespan
+app = FastAPI(title=Config.UI_TITLE, lifespan=lifespan)
 
 
 async def broadcast_transcription(text: str):
