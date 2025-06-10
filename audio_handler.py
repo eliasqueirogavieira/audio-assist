@@ -22,7 +22,14 @@ class AudioHandler:
         
         # Language configuration
         self.language = Config.DEFAULT_LANGUAGE
+        
+        # Dynamic real-time processing configuration
+        self.silence_threshold = Config.SILENCE_THRESHOLD
+        self.silence_duration = Config.SILENCE_DURATION
+        self.processing_lag_ms = 500  # Default processing lag
+        
         print(f"AudioHandler initialized with language: {self.language}")
+        print(f"Real-time config - Silence threshold: {self.silence_threshold}, Duration: {self.silence_duration}s")
 
         # Find system audio output device
         self._find_system_audio_device()
@@ -36,6 +43,26 @@ class AudioHandler:
         else:
             print(f"Warning: Attempted to set unsupported language: {lang_code}")
             return False
+    
+    def update_realtime_config(self, model_config: dict):
+        """Update real-time processing configuration based on model capabilities"""
+        # Extract timing configurations from model config
+        self.processing_lag_ms = model_config.get('realtime_processing_lag_ms', 500)
+        new_silence_duration = model_config.get('silence_threshold_ms', 1500) / 1000.0  # Convert to seconds
+        
+        # Update silence detection if significantly different
+        if abs(new_silence_duration - self.silence_duration) > 0.2:  # Only update if 200ms+ difference
+            self.silence_duration = new_silence_duration
+            print(f"Real-time processing updated - Processing lag: {self.processing_lag_ms}ms, Silence duration: {self.silence_duration}s")
+        
+        # Adjust silence threshold for more responsive detection in meetings/interviews
+        # Faster models can use lower thresholds for quicker response
+        if self.processing_lag_ms < 400:  # Very fast models like Groq
+            self.silence_threshold = max(100, Config.SILENCE_THRESHOLD * 0.7)  # More sensitive
+        elif self.processing_lag_ms < 600:  # Fast models like Gemini
+            self.silence_threshold = max(120, Config.SILENCE_THRESHOLD * 0.8)
+        else:  # Slower models
+            self.silence_threshold = Config.SILENCE_THRESHOLD  # Keep default
 
     def _find_system_audio_device(self):
         """Find the system audio output device (loopback/stereo mix)"""
@@ -107,7 +134,8 @@ class AudioHandler:
 
             audio_buffer = []
             silence_counter = 0
-            silence_threshold = int(Config.SILENCE_DURATION * Config.AUDIO_RATE / Config.AUDIO_CHUNK_SIZE)
+            # Use dynamic silence duration instead of static config
+            silence_threshold = int(self.silence_duration * Config.AUDIO_RATE / Config.AUDIO_CHUNK_SIZE)
 
             while self.is_listening:
                 try:
@@ -119,8 +147,8 @@ class AudioHandler:
                     audio_array = np.frombuffer(data, dtype=np.int16)
                     audio_level = np.abs(audio_array).mean()
 
-                    # Check for silence
-                    if audio_level < Config.SILENCE_THRESHOLD:
+                    # Check for silence using dynamic threshold
+                    if audio_level < self.silence_threshold:
                         silence_counter += 1
                     else:
                         silence_counter = 0

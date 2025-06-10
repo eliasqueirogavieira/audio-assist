@@ -126,6 +126,49 @@ def get_html_content() -> str:
             border-color: #667eea;
         }
         
+        .model-selector {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .model-selector label {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .model-dropdown {
+            padding: 8px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            color: #333;
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+            min-width: 200px;
+        }
+        
+        .model-dropdown:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .model-dropdown:hover {
+            border-color: #667eea;
+        }
+        
+        .model-dropdown:disabled {
+            background-color: #f8f9fa;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
         .controls {
             display: flex;
             gap: 15px;
@@ -450,6 +493,14 @@ def get_html_content() -> str:
             </select>
         </div>
         
+        <div class="model-selector">
+            <label for="modelSelect">🤖 AI Model:</label>
+            <select id="modelSelect" class="model-dropdown">
+                <!-- Options will be populated dynamically via WebSocket -->
+                <option value="">Loading models...</option>
+            </select>
+        </div>
+        
         <div class="controls">
             <button class="btn btn-primary" id="startBtn" onclick="startListening()">
                 🎤 Start Listening
@@ -577,9 +628,21 @@ def get_html_content() -> str:
                     addMessage('system', `🌐 Language changed to: ${data.content}`, new Date());
                     break;
                 
+                case 'available_models':
+                    populateModelDropdown(data.models, data.current_model);
+                    break;
+                
+                case 'model_changed':
+                    if (data.status === 'success') {
+                        addMessage('system', `🤖 Model changed to: ${data.new_model}`, new Date(data.timestamp * 1000));
+                        enableModelDropdown();
+                    }
+                    break;
+                
                 case 'error':
                     hideTypingIndicator();
                     addMessage('system', `❌ Error: ${data.content}`, new Date(data.timestamp * 1000));
+                    enableModelDropdown();
                     break;
             }
         }
@@ -774,6 +837,76 @@ def get_html_content() -> str:
             }
         }
         
+        function populateModelDropdown(models, currentModel) {
+            const modelSelect = document.getElementById('modelSelect');
+            modelSelect.innerHTML = ''; // Clear existing options
+            
+            // Add options for each available model
+            Object.entries(models).forEach(([displayName, modelId]) => {
+                const option = document.createElement('option');
+                option.value = modelId;
+                option.textContent = displayName;
+                if (modelId === currentModel) {
+                    option.selected = true;
+                }
+                modelSelect.appendChild(option);
+            });
+            
+            // Enable the dropdown
+            modelSelect.disabled = false;
+            
+            // Load saved model preference
+            loadModelPreference();
+        }
+        
+        function setModel() {
+            const modelSelect = document.getElementById('modelSelect');
+            const selectedModel = modelSelect.value;
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                // Disable dropdown during switch to prevent rapid switching
+                disableModelDropdown();
+                
+                const message = {
+                    type: 'set_model',
+                    model: selectedModel
+                };
+                
+                socket.send(JSON.stringify(message));
+                console.log('Model switch request sent:', selectedModel);
+                
+                // Save user preference
+                localStorage.setItem('userModel', selectedModel);
+            }
+        }
+        
+        function disableModelDropdown() {
+            const modelSelect = document.getElementById('modelSelect');
+            modelSelect.disabled = true;
+        }
+        
+        function enableModelDropdown() {
+            const modelSelect = document.getElementById('modelSelect');
+            modelSelect.disabled = false;
+        }
+        
+        function loadModelPreference() {
+            const savedModel = localStorage.getItem('userModel');
+            if (savedModel) {
+                const modelSelect = document.getElementById('modelSelect');
+                // Check if the saved model is available in the current options
+                const options = Array.from(modelSelect.options);
+                const matchingOption = options.find(option => option.value === savedModel);
+                if (matchingOption) {
+                    modelSelect.value = savedModel;
+                    // Automatically switch to saved model if different from current
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        setModel();
+                    }
+                }
+            }
+        }
+        
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
             // Set welcome message timestamp
@@ -784,6 +917,9 @@ def get_html_content() -> str:
             
             // Set up language selector event listener
             document.getElementById('languageSelect').addEventListener('change', setLanguage);
+            
+            // Set up model selector event listener
+            document.getElementById('modelSelect').addEventListener('change', setModel);
             
             // Load saved language preference
             loadLanguagePreference();

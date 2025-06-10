@@ -48,7 +48,10 @@ async def lifespan(app: FastAPI):
 
     try:
         audio_handler = AudioHandler(sync_on_transcription)
-        print("Audio handler initialized successfully")
+        # Initialize with default model configuration for optimal real-time processing
+        default_model_config = Config.get_model_config(Config.DEFAULT_MODEL_ID)
+        audio_handler.update_realtime_config(default_model_config)
+        print("Audio handler initialized successfully with real-time optimizations")
     except Exception as e:
         print(f"Failed to initialize audio handler: {e}")
         print("Audio features will be disabled")
