@@ -7,6 +7,9 @@ def get_html_content() -> str:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Real-Time AI Audio Assistant</title>
+    <!-- Markdown parsing and HTML sanitization libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -298,6 +301,98 @@ def get_html_content() -> str:
             font-size: 0.9rem;
         }
         
+        /* Markdown formatting styles */
+        .message p {
+            margin-bottom: 0.8em;
+        }
+        
+        .message h1, .message h2, .message h3, .message h4, .message h5, .message h6 {
+            margin: 1em 0 0.5em 0;
+            font-weight: bold;
+        }
+        
+        .message h1 { font-size: 1.5em; }
+        .message h2 { font-size: 1.3em; }
+        .message h3 { font-size: 1.1em; }
+        
+        .message strong {
+            font-weight: bold;
+        }
+        
+        .message em {
+            font-style: italic;
+        }
+        
+        .message ul, .message ol {
+            margin: 0.5em 0;
+            padding-left: 1.5em;
+        }
+        
+        .message li {
+            margin-bottom: 0.3em;
+        }
+        
+        .message pre {
+            background-color: #f5f5f5;
+            padding: 0.8em;
+            border-radius: 6px;
+            margin: 0.8em 0;
+            overflow-x: auto;
+            border-left: 3px solid #667eea;
+        }
+        
+        .message code {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        .message pre code {
+            background-color: transparent;
+            padding: 0;
+            border-radius: 0;
+            display: block;
+            white-space: pre;
+            word-wrap: normal;
+        }
+        
+        .message :not(pre) > code {
+            background-color: #f0f0f0;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 0.85em;
+        }
+        
+        .message blockquote {
+            border-left: 4px solid #ddd;
+            margin: 0.8em 0;
+            padding-left: 1em;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .message hr {
+            border: none;
+            border-top: 1px solid #ddd;
+            margin: 1em 0;
+        }
+        
+        .message table {
+            border-collapse: collapse;
+            margin: 0.8em 0;
+            width: 100%;
+        }
+        
+        .message th, .message td {
+            border: 1px solid #ddd;
+            padding: 0.4em 0.8em;
+            text-align: left;
+        }
+        
+        .message th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 20px;
@@ -397,6 +492,14 @@ def get_html_content() -> str:
         let socket = null;
         let isListening = false;
         let currentResponse = '';
+        
+        // Configure marked.js for GitHub Flavored Markdown
+        marked.setOptions({
+            gfm: true,        // Use GitHub Flavored Markdown
+            breaks: true,     // Convert single newlines into <br>
+            mangle: false,    // To avoid obfuscating email addresses
+            headerIds: false  // To avoid creating ids for headers
+        });
         
         // Initialize WebSocket connection
         function initWebSocket() {
@@ -601,8 +704,12 @@ def get_html_content() -> str:
                 chatContainer.appendChild(currentResponseElement);
             }
             
+            // Parse markdown and sanitize HTML
+            const rawHtml = marked.parse(fullContent);
+            const sanitizedHtml = DOMPurify.sanitize(rawHtml);
+            
             currentResponseElement.innerHTML = `
-                <div>${fullContent}</div>
+                <div>${sanitizedHtml}</div>
                 <div class="timestamp">Responding...</div>
             `;
             
@@ -613,8 +720,13 @@ def get_html_content() -> str:
         function finalizeResponse(content, timestamp) {
             if (currentResponseElement) {
                 const timeStr = timestamp.toLocaleTimeString();
+                
+                // Parse markdown and sanitize HTML for final response
+                const rawHtml = marked.parse(content);
+                const sanitizedHtml = DOMPurify.sanitize(rawHtml);
+                
                 currentResponseElement.innerHTML = `
-                    <div>${content}</div>
+                    <div>${sanitizedHtml}</div>
                     <div class="timestamp">${timeStr}</div>
                 `;
                 currentResponseElement = null;
