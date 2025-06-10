@@ -87,6 +87,42 @@ def get_html_content() -> str:
             100% { transform: scale(1); opacity: 1; }
         }
         
+        .language-selector {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .language-selector label {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .language-dropdown {
+            padding: 8px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            color: #333;
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+        }
+        
+        .language-dropdown:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .language-dropdown:hover {
+            border-color: #667eea;
+        }
+        
         .controls {
             display: flex;
             gap: 15px;
@@ -310,6 +346,15 @@ def get_html_content() -> str:
             </div>
         </div>
         
+        <div class="language-selector">
+            <label for="languageSelect">🌐 Language:</label>
+            <select id="languageSelect" class="language-dropdown">
+                <option value="en-US">English (Global)</option>
+                <option value="en-US-accent">English (Spanish Accent)</option>
+                <option value="pt-BR">Portuguese (Brazil)</option>
+            </select>
+        </div>
+        
         <div class="controls">
             <button class="btn btn-primary" id="startBtn" onclick="startListening()">
                 🎤 Start Listening
@@ -364,6 +409,10 @@ def get_html_content() -> str:
                 console.log('WebSocket connected');
                 updateConnectionStatus(true);
                 addMessage('system', '✅ Connected to AI Assistant', new Date());
+                
+                // Send language preference when connected
+                loadLanguagePreference();
+                setLanguage();
             };
             
             socket.onmessage = function(event) {
@@ -419,6 +468,10 @@ def get_html_content() -> str:
                 case 'history_cleared':
                     clearChatContainer();
                     addMessage('system', '🗑️ Chat history cleared', new Date());
+                    break;
+                
+                case 'language_changed':
+                    addMessage('system', `🌐 Language changed to: ${data.content}`, new Date());
                     break;
                 
                 case 'error':
@@ -576,6 +629,39 @@ def get_html_content() -> str:
             document.getElementById('typingIndicator').classList.remove('active');
         }
         
+        function setLanguage() {
+            const languageSelect = document.getElementById('languageSelect');
+            const selectedLanguage = languageSelect.value;
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                // Map display value to API value (for Spanish accent)
+                const apiLanguage = selectedLanguage === 'en-US-accent' ? 'en-US' : selectedLanguage;
+                
+                const message = {
+                    type: 'set_language',
+                    language: apiLanguage
+                };
+                
+                socket.send(JSON.stringify(message));
+                console.log('Language preference sent:', apiLanguage);
+                
+                // Save user preference
+                localStorage.setItem('userLanguage', selectedLanguage);
+            }
+        }
+        
+        function loadLanguagePreference() {
+            const savedLanguage = localStorage.getItem('userLanguage');
+            if (savedLanguage) {
+                const languageSelect = document.getElementById('languageSelect');
+                languageSelect.value = savedLanguage;
+                // Send language preference when connection is established
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    setLanguage();
+                }
+            }
+        }
+        
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
             // Set welcome message timestamp
@@ -583,6 +669,12 @@ def get_html_content() -> str:
             
             // Initialize WebSocket connection
             initWebSocket();
+            
+            // Set up language selector event listener
+            document.getElementById('languageSelect').addEventListener('change', setLanguage);
+            
+            // Load saved language preference
+            loadLanguagePreference();
             
             // Focus on text input
             document.getElementById('textInput').focus();

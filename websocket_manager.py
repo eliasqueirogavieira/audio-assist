@@ -10,6 +10,7 @@ class ConnectionManager:
         self.active_connections: List[WebSocket] = []
         self.llm_client = create_llm_client()
         self.conversation_histories: Dict[WebSocket, List[Dict[str, str]]] = {}
+        self.connection_audio_handlers: Dict[WebSocket, AudioHandler] = {}
     
     async def connect(self, websocket: WebSocket):
         """Accept new WebSocket connection"""
@@ -24,6 +25,8 @@ class ConnectionManager:
             self.active_connections.remove(websocket)
         if websocket in self.conversation_histories:
             del self.conversation_histories[websocket]
+        if websocket in self.connection_audio_handlers:
+            del self.connection_audio_handlers[websocket]
         print(f"Client disconnected. Total connections: {len(self.active_connections)}")
     
     async def send_personal_message(self, message: dict, websocket: WebSocket):
@@ -113,6 +116,42 @@ class ConnectionManager:
             await self.send_personal_message({
                 "type": "history_cleared",
                 "message": "Conversation history cleared"
+            }, websocket)
+        elif message_type == "set_language":
+            await self.handle_language_change(websocket, data)
+    
+    async def handle_language_change(self, websocket: WebSocket, data: dict):
+        """Handle language change request"""
+        try:
+            from main import audio_handler as global_audio_handler
+            language = data.get("language")
+            
+            if global_audio_handler:
+                success = global_audio_handler.set_language(language)
+                if success:
+                    await self.send_personal_message({
+                        "type": "language_changed",
+                        "content": f"{language}",
+                        "message": f"Language changed to {language}"
+                    }, websocket)
+                else:
+                    await self.send_personal_message({
+                        "type": "error",
+                        "content": f"Unsupported language: {language}",
+                        "timestamp": asyncio.get_event_loop().time()
+                    }, websocket)
+            else:
+                await self.send_personal_message({
+                    "type": "error",
+                    "content": "Audio handler not available",
+                    "timestamp": asyncio.get_event_loop().time()
+                }, websocket)
+        except Exception as e:
+            print(f"Error handling language change: {e}")
+            await self.send_personal_message({
+                "type": "error",
+                "content": f"Error changing language: {str(e)}",
+                "timestamp": asyncio.get_event_loop().time()
             }, websocket)
     
     async def start_audio_listening(self, websocket: WebSocket):

@@ -19,9 +19,23 @@ class AudioHandler:
         self.system_audio_device = None
         self.loop = None
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+        
+        # Language configuration
+        self.language = Config.DEFAULT_LANGUAGE
+        print(f"AudioHandler initialized with language: {self.language}")
 
         # Find system audio output device
         self._find_system_audio_device()
+
+    def set_language(self, lang_code: str) -> bool:
+        """Set the language for speech recognition"""
+        if lang_code in Config.SUPPORTED_LANGUAGES:
+            self.language = lang_code
+            print(f"Language set to: {self.language} ({Config.SUPPORTED_LANGUAGES[lang_code]})")
+            return True
+        else:
+            print(f"Warning: Attempted to set unsupported language: {lang_code}")
+            return False
 
     def _find_system_audio_device(self):
         """Find the system audio output device (loopback/stereo mix)"""
@@ -148,10 +162,10 @@ class AudioHandler:
                 2  # 2 bytes per sample for 16-bit audio
             )
 
-            # Transcribe using Google Speech Recognition
-            text = self.recognizer.recognize_google(audio_data_obj)
+            # Transcribe using Google Speech Recognition with language support
+            text = self.recognizer.recognize_google(audio_data_obj, language=self.language)
             if text.strip():
-                print(f"Transcribed system audio: {text}")
+                print(f"Transcribed system audio ({self.language}): {text}")
                 # Use thread-safe callback
                 self._safe_callback(text)
 
