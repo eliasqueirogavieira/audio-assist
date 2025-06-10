@@ -32,7 +32,7 @@ class Config:
     
     # Gemini Configuration (Google AI)
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-preview-05-20")
 
     # Audio Configuration
     AUDIO_CHUNK_SIZE = 4096
@@ -65,7 +65,7 @@ class Config:
     AVAILABLE_MODELS = {
         "Groq Llama3 8B (Free)": f"groq/{GROQ_MODEL}",
         "OpenAI GPT-3.5 Turbo": f"openai/{OPENAI_MODEL}",
-        "Gemini 2.0 Flash": f"gemini/{GEMINI_MODEL}",
+        "Gemini 2.5 Flash Preview": f"gemini/{GEMINI_MODEL}",
         "Ollama Local": f"ollama/{OLLAMA_MODEL}",
         "Cohere Command Light": f"cohere/{COHERE_MODEL}"
     }

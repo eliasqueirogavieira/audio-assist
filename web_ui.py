@@ -90,15 +90,25 @@ def get_html_content() -> str:
             100% { transform: scale(1); opacity: 1; }
         }
         
+        .controls-container {
+            display: flex;
+            flex-direction: row;
+            align-items: stretch;
+            gap: 16px;
+            margin-bottom: 20px;
+            flex-wrap: wrap; /* Allow wrapping on mobile */
+        }
+        
         .language-selector {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
-            margin-bottom: 20px;
             padding: 15px;
             background: #f8f9fa;
             border-radius: 10px;
+            flex: 1; /* Take up available space */
+            min-width: 250px; /* Minimum width before wrapping */
         }
         
         .language-selector label {
@@ -131,10 +141,11 @@ def get_html_content() -> str:
             align-items: center;
             justify-content: center;
             gap: 10px;
-            margin-bottom: 20px;
             padding: 15px;
             background: #f8f9fa;
             border-radius: 10px;
+            flex: 1; /* Take up available space */
+            min-width: 250px; /* Minimum width before wrapping */
         }
         
         .model-selector label {
@@ -446,6 +457,17 @@ def get_html_content() -> str:
                 font-size: 2rem;
             }
             
+            .controls-container {
+                flex-direction: column; /* Stack dropdowns vertically on mobile */
+                gap: 12px;
+            }
+            
+            .language-selector,
+            .model-selector {
+                min-width: unset; /* Remove minimum width constraint */
+                flex: none; /* Don't grow to fill space */
+            }
+            
             .controls {
                 flex-direction: column;
                 align-items: center;
@@ -484,21 +506,23 @@ def get_html_content() -> str:
             </div>
         </div>
         
-        <div class="language-selector">
-            <label for="languageSelect">🌐 Language:</label>
-            <select id="languageSelect" class="language-dropdown">
-                <option value="en-US">English (Global)</option>
-                <option value="en-US-accent">English (Spanish Accent)</option>
-                <option value="pt-BR">Portuguese (Brazil)</option>
-            </select>
-        </div>
-        
-        <div class="model-selector">
-            <label for="modelSelect">🤖 AI Model:</label>
-            <select id="modelSelect" class="model-dropdown">
-                <!-- Options will be populated dynamically via WebSocket -->
-                <option value="">Loading models...</option>
-            </select>
+        <div class="controls-container">
+            <div class="language-selector">
+                <label for="languageSelect">🌐 Language:</label>
+                <select id="languageSelect" class="language-dropdown">
+                    <option value="en-US">English (Global)</option>
+                    <option value="en-US-accent">English (Spanish Accent)</option>
+                    <option value="pt-BR">Portuguese (Brazil)</option>
+                </select>
+            </div>
+            
+            <div class="model-selector">
+                <label for="modelSelect">🤖 AI Model:</label>
+                <select id="modelSelect" class="model-dropdown">
+                    <!-- Options will be populated dynamically via WebSocket -->
+                    <option value="">Loading models...</option>
+                </select>
+            </div>
         </div>
         
         <div class="controls">
@@ -634,7 +658,7 @@ def get_html_content() -> str:
                 
                 case 'model_changed':
                     if (data.status === 'success') {
-                        addMessage('system', `🤖 Model changed to: ${data.new_model}`, new Date(data.timestamp * 1000));
+                        addMessage('system', `🤖 Model changed to: ${data.new_model_display_name}`, new Date(data.timestamp * 1000));
                         enableModelDropdown();
                     }
                     break;

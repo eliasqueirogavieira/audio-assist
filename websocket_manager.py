@@ -237,6 +237,17 @@ class ConnectionManager:
             new_llm_client = create_llm_client(new_model_id)
             old_model_id = getattr(self.connection_llm_clients.get(websocket), 'model', 'unknown')
             
+            # 3.5. Get user-friendly display names for both old and new models
+            def get_display_name(model_id):
+                """Get user-friendly display name for a model ID"""
+                for display_name, mapped_id in Config.AVAILABLE_MODELS.items():
+                    if mapped_id == model_id:
+                        return display_name
+                return model_id  # Fallback to raw ID if not found
+            
+            new_model_display_name = get_display_name(new_model_id)
+            old_model_display_name = get_display_name(old_model_id)
+            
             # 4. Update connection state
             self.connection_llm_clients[websocket] = new_llm_client
             new_config = Config.get_model_config(new_model_id)
@@ -256,8 +267,10 @@ class ConnectionManager:
                 "status": "success",
                 "old_model": old_model_id,
                 "new_model": new_model_id,
+                "old_model_display_name": old_model_display_name,
+                "new_model_display_name": new_model_display_name,
                 "config": Config.get_model_config(new_model_id),
-                "message": f"Model switched from {old_model_id} to {new_model_id}",
+                "message": f"Model switched from {old_model_display_name} to {new_model_display_name}",
                 "timestamp": current_time
             }, websocket)
             
