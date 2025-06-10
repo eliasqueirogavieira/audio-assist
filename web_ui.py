@@ -33,7 +33,7 @@ def get_html_content() -> str:
             border-radius: 20px;
             padding: 30px;
             width: 100%;
-            max-width: 800px;
+            max-width: 1400px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
         }
         
@@ -175,7 +175,7 @@ def get_html_content() -> str:
         .chat-container {
             background: white;
             border-radius: 15px;
-            height: 400px;
+            height: 70vh;
             overflow-y: auto;
             padding: 20px;
             border: 2px solid #e9ecef;
@@ -414,7 +414,7 @@ def get_html_content() -> str:
             }
             
             .chat-container {
-                height: 300px;
+                height: 60vh;
             }
             
             .message {
